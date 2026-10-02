@@ -109,6 +109,7 @@ option(ASSERTS_ENABLED       "Enable srsRAN asserts"                    ON)
 option(STOP_ON_WARNING       "Interrupt application on warning"         OFF)
 
 option(ENABLE_ALL_TEST       "Enable all unit/component test"           OFF)
+option(ENABLE_SRSRAN_EXAMPLES "Build the srsRAN example programs"        ON)
 
 # Users that want to try this feature need to make sure the lto plugin is
 # loaded by bintools (ar, nm, ...). Older versions of bintools will not do
@@ -715,4 +716,10 @@ else(ENABLE_SRSEPC)
   message(STATUS "srsEPC build disabled")
 endif(ENABLE_SRSEPC)
 
-add_subdirectory(test)
+# Tests pull find_package(SCTP REQUIRED) and other host-only dependencies, and
+# a consumer embedding this tree as a subproject (the macOS LTESniffer build)
+# does not want them. Gate on the standard BUILD_TESTING knob.
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif()
+

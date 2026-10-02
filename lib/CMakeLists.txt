@@ -23,8 +23,12 @@
 ########################################################################
 add_subdirectory(src)
 add_subdirectory(include)
-add_subdirectory(examples)
-add_subdirectory(test)
+if(ENABLE_SRSRAN_EXAMPLES)
+  add_subdirectory(examples)
+endif()
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif()
 
 ########################################################################
 # Install library headers
