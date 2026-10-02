@@ -396,7 +396,13 @@ macro(ADD_C_COMPILER_FLAG_IF_AVAILABLE flag have)
 endmacro(ADD_C_COMPILER_FLAG_IF_AVAILABLE)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-comment -Wno-reorder -Wno-unused-variable -Wtype-limits -std=c++11 -fno-strict-aliasing")
+  # UHD 4.x uses std::is_same_v, std::optional and friends in its public
+  # headers, which are C++17. This tree builds as C++11, so make the standard a
+  # cache variable: the default keeps the tree's own standard and a build
+  # against a recent UHD can ask for c++17. The flag is appended last, so a bare
+  # -std on the command line would be overridden; the cache knob is the way.
+  set(SRSRAN_CXX_STANDARD "c++11" CACHE STRING "C++ standard to build with")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-comment -Wno-reorder -Wno-unused-variable -Wtype-limits -std=${SRSRAN_CXX_STANDARD} -fno-strict-aliasing")
 
   ADD_C_COMPILER_FLAG_IF_AVAILABLE("-Wno-unused-but-set-variable" HAVE_WNO_UNUSED_BUT_SET_VARIABLE)
   ADD_CXX_COMPILER_FLAG_IF_AVAILABLE("-Wno-unused-but-set-variable" HAVE_WNO_UNUSED_BUT_SET_VARIABLE)
