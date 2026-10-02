@@ -24,7 +24,11 @@ set(SOURCES
     srslog_c.cpp
     event_trace.cpp)
 
-include_directories(${PROJECT_SOURCE_DIR}/lib/include/srsran/srslog/bundled/)
+# BEFORE matters. bundled/fmt/format.cc includes "fmt/format-inl.h", which does
+# not resolve next to the source file, so it falls through to the -I list. Any fmt
+# installed system wide, for example Homebrew's on macOS, is otherwise reached first
+# and supplies a different major version of the library than this tree expects.
+include_directories(BEFORE ${PROJECT_SOURCE_DIR}/lib/include/srsran/srslog/bundled/)
 include_directories(${PROJECT_SOURCE_DIR}/lib/include/srsran/srslog/formatters)
 
 set(SOURCES
