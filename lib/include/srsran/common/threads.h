@@ -32,6 +32,15 @@
 #endif
 #include <unistd.h>
 
+#ifdef __APPLE__
+// Darwin's pthread_setname_np takes only the name and always acts on the
+// calling thread; it has no thread argument. Every call site here names the
+// calling thread (pthread_self()), so drop the thread argument on Darwin.
+#define srsran_pthread_setname(thr, name) pthread_setname_np(name)
+#else
+#define srsran_pthread_setname(thr, name) pthread_setname_np(thr, name)
+#endif
+
 // Default priority for all threads below UHD threads
 #define DEFAULT_PRIORITY 60
 
@@ -88,7 +97,7 @@ public:
   void set_name(const std::string& name_)
   {
     name = name_;
-    pthread_setname_np(pthread_self(), name.c_str());
+    srsran_pthread_setname(pthread_self(), name.c_str());
   }
 
   void wait_thread_finish() { pthread_join(_thread, NULL); }
@@ -112,7 +121,7 @@ protected:
 private:
   static void* thread_function_entry(void* _this)
   {
-    pthread_setname_np(pthread_self(), ((thread*)_this)->name.c_str());
+    srsran_pthread_setname(pthread_self(), ((thread*)_this)->name.c_str());
     ((thread*)_this)->run_thread();
     return NULL;
   }
