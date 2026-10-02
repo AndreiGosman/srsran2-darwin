@@ -18,6 +18,12 @@
 # and at http://www.gnu.org/licenses/.
 #
 
+# network_utils.cc includes <netinet/sctp.h>. On Linux that lives in
+# /usr/include and needs no search; on Darwin it is only in the installed
+# libsctp-compat shim, whose pkg-config entry FindSCTP resolves. Wire the
+# include path here so this library builds standalone without the daemons.
+find_package(SCTP)
+
 set(SOURCES arch_select.cc
             enb_events.cc
             backtrace.c
@@ -58,7 +64,7 @@ add_dependencies(srsran_common gen_build_info)
 
 add_executable(arch_select arch_select.cc)
 
-target_include_directories(srsran_common PUBLIC ${SEC_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR} ${BACKWARD_INCLUDE_DIRS})
+target_include_directories(srsran_common PUBLIC ${SEC_INCLUDE_DIRS} ${SCTP_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR} ${BACKWARD_INCLUDE_DIRS})
 target_link_libraries(srsran_common srsran_phy support srslog ${SEC_LIBRARIES} ${BACKWARD_LIBRARIES} ${SCTP_LIBRARIES})
 target_compile_definitions(srsran_common PRIVATE ${BACKWARD_DEFINITIONS})
 
