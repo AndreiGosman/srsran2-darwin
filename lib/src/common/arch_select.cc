@@ -26,10 +26,16 @@
 #include <unistd.h>
 
 #ifdef IS_ARM
+#ifdef __APPLE__
+// Apple Silicon is ARMv8 and always provides NEON. Darwin has no getauxval,
+// no <sys/auxv.h> and no <asm/hwcap.h>; the hardware capability is a constant,
+// so the runtime probe below is replaced by an unconditional "neon".
+#else
 #include <asm/hwcap.h>
 #include <stdio.h>
 #include <sys/auxv.h>
 #define USER_HWCAP_NEON (1 << 12)
+#endif
 #else
 #include <cpuid.h>
 #define X86_CPUID_BASIC_LEAF 1
@@ -93,6 +99,10 @@ const char* x86_get_isa()
 #ifdef IS_ARM
 const char* arm_get_isa()
 {
+#ifdef __APPLE__
+  // Apple Silicon always has NEON; no runtime probe is possible or needed.
+  return "neon";
+#else
 #ifdef HAVE_NEONv8
   if (getauxval(AT_HWCAP) & USER_HWCAP_NEON) {
 #else
@@ -102,6 +112,7 @@ const char* arm_get_isa()
   } else {
     return "generic";
   }
+#endif
 }
 #endif
 
