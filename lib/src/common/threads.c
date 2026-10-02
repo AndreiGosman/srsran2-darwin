@@ -53,7 +53,9 @@ bool threads_new_rt_cpu(pthread_t* thread, void* (*start_routine)(void*), void* 
 
   pthread_attr_t     attr;
   struct sched_param param;
+#ifdef __linux__
   cpu_set_t          cpuset;
+#endif
   bool               attr_enable = false;
 
 #ifdef PER_THREAD_PRIO
@@ -124,6 +126,10 @@ bool threads_new_rt_cpu(pthread_t* thread, void* (*start_routine)(void*), void* 
       fprintf(stderr, "Error not enough privileges to set Scheduling priority\n");
     }
   }
+#ifdef __linux__
+  // cpu_set_t, the CPU_* macros and pthread_attr_setaffinity_np are Linux
+  // extensions. Darwin has no mask-based affinity (THREAD_AFFINITY_POLICY is an
+  // advisory hint, not a pin), so the request is dropped rather than faked.
   if (cpu > 0) {
     if (cpu > 50) {
       uint32_t mask;
@@ -144,6 +150,9 @@ bool threads_new_rt_cpu(pthread_t* thread, void* (*start_routine)(void*), void* 
       perror("pthread_attr_setaffinity_np");
     }
   }
+#else
+  (void)cpu;
+#endif
 
 // TSAN seems to have issues with thread attributes when running as normal user, disable them in that case
 #if HAVE_TSAN
@@ -178,7 +187,9 @@ bool threads_new_rt_cpu(pthread_t* thread, void* (*start_routine)(void*), void* 
 void threads_print_self()
 {
   pthread_t          thread;
+#ifdef __linux__
   cpu_set_t          cpuset;
+#endif
   struct sched_param param;
   int                policy;
   const char*        p;
@@ -186,6 +197,9 @@ void threads_print_self()
 
   thread = pthread_self();
 
+#ifdef __linux__
+  // Affinity reporting is compiled out on Darwin for the same reason: there is
+  // no mask-based affinity to read back.
   s = pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
   if (s != 0) {
     printf("error pthread_getaffinity_np: %s\n", strerror(s));
@@ -197,6 +211,9 @@ void threads_print_self()
       printf("    CPU %d\n", j);
     }
   }
+#else
+  (void)j;
+#endif
 
   s = pthread_getschedparam(thread, &policy, &param);
   if (s != 0) {
