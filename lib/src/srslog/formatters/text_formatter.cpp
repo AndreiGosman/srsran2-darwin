@@ -45,11 +45,30 @@ static void format_hex_dump(const std::vector<uint8_t>& v, fmt::memory_buffer& b
   }
 }
 
+/*
+ * libstdc++ makes high_resolution_clock an alias of system_clock, which has
+ * to_time_t. libc++ makes it an alias of steady_clock, which does not, because
+ * a monotonic clock has no defined epoch. Convert by measuring both clocks at
+ * once and carrying the offset across. The result is exact only if the two
+ * clocks do not drift between stamping and formatting, which for a log
+ * timestamp is well inside the noise.
+ */
+static std::time_t srslog_tp_to_time_t(std::chrono::high_resolution_clock::time_point tp)
+{
+  using hr_clock  = std::chrono::high_resolution_clock;
+  using sys_clock = std::chrono::system_clock;
+
+  const auto sys_now = sys_clock::now();
+  const auto hr_now  = hr_clock::now();
+
+  return sys_clock::to_time_t(sys_now + std::chrono::duration_cast<sys_clock::duration>(tp - hr_now));
+}
+
 /// Format the log metadata into the input buffer.
 static void format_metadata(const detail::log_entry_metadata& metadata, fmt::memory_buffer& buffer)
 {
   // Time stamp data preparation.
-  std::tm current_time = fmt::gmtime(std::chrono::high_resolution_clock::to_time_t(metadata.tp));
+  std::tm current_time = fmt::gmtime(srslog_tp_to_time_t(metadata.tp));
   auto    us_fraction =
       std::chrono::duration_cast<std::chrono::microseconds>(metadata.tp.time_since_epoch()).count() % 1000000u;
   fmt::format_to(buffer, "{:%F}T{:%H:%M:%S}.{:06} ", current_time, current_time, us_fraction);
