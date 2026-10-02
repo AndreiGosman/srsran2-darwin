@@ -19,6 +19,7 @@
  *
  */
 
+#include "srsran/common/endian_compat.h"
 #include "srsran/mac/mac_sch_pdu_nr.h"
 
 namespace srsran {
