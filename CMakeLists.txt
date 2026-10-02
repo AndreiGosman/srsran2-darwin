@@ -34,6 +34,16 @@ cmake_minimum_required(VERSION 2.6)
 project( SRSRAN )
 message( STATUS "CMAKE_SYSTEM: " ${CMAKE_SYSTEM} )
 message( STATUS "CMAKE_SYSTEM_PROCESSOR: " ${CMAKE_SYSTEM_PROCESSOR} )
+
+# Darwin reports the 64-bit ARM processor as "arm64"; Linux reports "aarch64".
+# They are the same architecture with the same NEONv8 instruction set; only the
+# string differs. Normalise to aarch64 once, here, so the existing aarch64 guards
+# (GCC_ARCH armv8-a at the arch block, HAVE_NEONv8 at the compiler-flag block)
+# apply unchanged on Apple Silicon, and the 32-bit "arm" substring guards do not.
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+  set(CMAKE_SYSTEM_PROCESSOR "aarch64")
+  message(STATUS "Normalised CMAKE_SYSTEM_PROCESSOR arm64 -> aarch64")
+endif()
 message( STATUS "CMAKE_CXX_COMPILER: " ${CMAKE_CXX_COMPILER} )
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
