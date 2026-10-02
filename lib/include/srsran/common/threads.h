@@ -25,7 +25,11 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
+#ifdef __APPLE__
+#include "srsran/common/timerfd_compat.h"
+#else
 #include <sys/timerfd.h>
+#endif
 #include <unistd.h>
 
 // Default priority for all threads below UHD threads
