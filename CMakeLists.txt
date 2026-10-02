@@ -202,6 +202,13 @@ else(POLARSSL_FOUND)
   find_package(MbedTLS REQUIRED)
   if (MBEDTLS_FOUND)
     set(SEC_INCLUDE_DIRS "${MBEDTLS_INCLUDE_DIRS}")
+    # BEFORE matters when more than one mbedtls is installed. Consumers add
+    # SEC_INCLUDE_DIRS after the inherited include paths, so a newer mbedtls in
+    # a Homebrew prefix supplies the headers instead and mixes them with the
+    # selected library. mbedtls 4 removed the one-shot mbedtls_md_hmac that
+    # srsran/common/ssl.h needs, so the build fails unless the chosen include
+    # directory comes first.
+    include_directories(BEFORE ${MBEDTLS_INCLUDE_DIRS})
     if(BUILD_STATIC)
       set(SEC_LIBRARIES    "${MBEDTLS_STATIC_LIBRARIES}")
     else(BUILD_STATIC)
