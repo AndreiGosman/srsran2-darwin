@@ -179,6 +179,7 @@ public:
   virtual uhd_error get_tx_stream(size_t& max_num_samps)                                               = 0;
   virtual uhd_error set_tx_gain(size_t ch, double gain)                                                = 0;
   virtual uhd_error set_rx_gain(size_t ch, double gain)                                                = 0;
+  virtual uhd_error set_rx_antenna(size_t ch, const std::string& antenna)                              = 0;
   virtual uhd_error get_rx_gain(double& gain)                                                          = 0;
   virtual uhd_error get_tx_gain(double& gain)                                                          = 0;
   virtual uhd_error set_tx_freq(uint32_t ch, double target_freq, double& actual_freq)                  = 0;

@@ -150,6 +150,7 @@ struct rf_uhd_handler_t {
   uint32_t                                nof_tx_channels     = 0;
   std::array<double, SRSRAN_MAX_CHANNELS> tx_freq             = {};
   std::array<double, SRSRAN_MAX_CHANNELS> rx_freq             = {};
+  std::array<std::string, SRSRAN_MAX_CHANNELS> rx_antenna     = {};
 
   std::mutex                                                 tx_gain_mutex;
   std::array<std::pair<double, double>, SRSRAN_MAX_CHANNELS> tx_gain_db = {};
@@ -739,6 +740,21 @@ static int uhd_init(rf_uhd_handler_t* handler, char* args, uint32_t nof_channels
     }
   }
 
+  // Parse a requested RX antenna per channel. rx_antenna applies to channel 0
+  // (or to every channel when it is the only one given); rx_antennaN names
+  // channel N. UHD make does not read these, so they are popped here and
+  // applied after the device is made.
+  for (uint32_t i = 0; i < nof_channels; i++) {
+    if (i == 0 and device_addr.has_key("rx_antenna")) {
+      handler->rx_antenna[i] = device_addr.pop("rx_antenna");
+    } else {
+      std::string key = "rx_antenna" + std::to_string(i);
+      if (device_addr.has_key(key)) {
+        handler->rx_antenna[i] = device_addr.pop(key);
+      }
+    }
+  }
+
   // Set dynamic master clock rate configuration
   if (device_addr.has_key("type")) {
     handler->dynamic_master_rate = RH_UHD_IMP_FIX_MASTER_CLOCK_RATE_DEVICE_LIST.count(device_addr["type"]) == 0;
@@ -804,6 +820,17 @@ static int uhd_init(rf_uhd_handler_t* handler, char* args, uint32_t nof_channels
       handler->devname = DEVNAME_N300;
     } else {
       handler->devname = DEVNAME_UNKNOWN;
+    }
+  }
+
+  // Select the RX antenna port per channel when one was requested. The
+  // default port (RX2 on a B2xx) stays when none is given.
+  for (uint32_t i = 0; i < nof_channels; i++) {
+    if (not handler->rx_antenna[i].empty()) {
+      if (handler->uhd->set_rx_antenna(i, handler->rx_antenna[i]) != UHD_ERROR_NONE) {
+        return SRSRAN_ERROR;
+      }
+      printf("Setting RX antenna of channel %d to '%s'\n", i, handler->rx_antenna[i].c_str());
     }
   }
 

@@ -619,6 +619,15 @@ public:
         UHD_LOG_DEBUG(radio_id[radio_idx], "Actual TX Gain: " << radio_ctrl[radio_idx]->get_rx_gain(0) << " dB...");)
   }
 
+  uhd_error set_rx_antenna(size_t ch, const std::string& antenna) override
+  {
+    // RFNoC antenna selection is not wired here; the generic device handles
+    // the B2xx class this port targets. Accept the call so the interface is
+    // satisfied, and report nothing to change.
+    (void)ch;
+    (void)antenna;
+    return UHD_ERROR_NONE;
+  }
   uhd_error set_rx_gain(size_t ch, double gain) override
   {
     if (ch >= nof_channels * nof_radios) {
