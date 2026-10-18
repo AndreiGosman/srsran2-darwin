@@ -73,6 +73,22 @@ static inline void refsignal_set_results_not_found(srsran_refsignal_dl_sync_t* q
   q->peak_index = UINT32_MAX;
 }
 
+static inline void refsignal_reset_stage_figures(srsran_refsignal_dl_sync_t* q)
+{
+  q->corr_peak            = 0.0f;
+  q->corr_rms             = 0.0f;
+  q->corr_ratio           = 0.0f;
+  q->corr_peak_index      = -1;
+  q->sf_measured          = 0;
+  q->rsrp_spread_dB       = NAN;
+  q->cfo_spread_Hz        = NAN;
+  q->cfo_est_Hz           = NAN;
+  q->rsrp_false_margin_dB = NAN;
+  q->sss_ratio            = NAN;
+  q->false_count          = 0;
+  q->false_alarm          = false;
+}
+
 static inline void refsignal_sf_prepare_correlation(srsran_refsignal_dl_sync_t* q)
 {
   uint32_t sf_len   = q->ifft.sf_sz;
@@ -209,9 +225,18 @@ int srsran_refsignal_dl_sync_init(srsran_refsignal_dl_sync_t* q, srsran_cp_t cp)
 
     // Set default results to not found
     refsignal_set_results_not_found(q);
+    refsignal_reset_stage_figures(q);
+    q->corr_threshold = REFSIGNAL_DL_SYNC_CORRELATION_THR;
   }
 
   return ret;
+}
+
+void srsran_refsignal_dl_sync_set_correlation_threshold(srsran_refsignal_dl_sync_t* q, float threshold)
+{
+  if (q) {
+    q->corr_threshold = (threshold > 0.0f) ? threshold : REFSIGNAL_DL_SYNC_CORRELATION_THR;
+  }
 }
 
 int srsran_refsignal_dl_sync_set_cell(srsran_refsignal_dl_sync_t* q, srsran_cell_t cell)
@@ -343,6 +368,7 @@ int refsignal_dl_sync_find_peak(srsran_refsignal_dl_sync_t* q, cf_t* buffer, uin
   float peak_value = 0.0f;
   int   peak_idx   = 0;
   float rms_avg    = 0;
+  uint32_t blocks  = 0;
 
   uint32_t sf_len = q->ifft.sf_sz;
   if (sf_len == 0) {
@@ -361,6 +387,7 @@ int refsignal_dl_sync_find_peak(srsran_refsignal_dl_sync_t* q, cf_t* buffer, uin
     refsignal_sf_correlate(q, &buffer[n], &peak, &imax, &rms);
 
     rms_avg += rms;
+    blocks++;
 
     // Found bigger peak
     if (peak > peak_value) {
@@ -371,9 +398,15 @@ int refsignal_dl_sync_find_peak(srsran_refsignal_dl_sync_t* q, cf_t* buffer, uin
 
   // Condition of peak detection
   rms_avg /= floorf((float)nsamples / sf_len);
-  if (peak_value > rms_avg * REFSIGNAL_DL_SYNC_CORRELATION_THR) {
+  if (peak_value > rms_avg * q->corr_threshold) {
     ret = peak_idx;
   }
+
+  // Keep the stage figures for the caller, found or not
+  q->corr_peak       = peak_value;
+  q->corr_rms        = rms_avg;
+  q->corr_ratio      = (rms_avg > 0.0f) ? peak_value / rms_avg : 0.0f;
+  q->corr_peak_index = blocks ? peak_idx : -1;
 
   // Double check sub-frame selection failure due to high PSS
   if (ret >= 0) {
@@ -422,6 +455,8 @@ int srsran_refsignal_dl_sync_run(srsran_refsignal_dl_sync_t* q, cf_t* buffer, ui
   float    sss_strength_false_avg = 0.0f;
   float    rsrp_false_avg         = 0.0f;
   bool     false_alarm            = false;
+
+  refsignal_reset_stage_figures(q);
 
   // Stage 1: find peak
   int peak_idx = refsignal_dl_sync_find_peak(q, buffer, nsamples);
@@ -524,6 +559,16 @@ int srsran_refsignal_dl_sync_run(srsran_refsignal_dl_sync_t* q, cf_t* buffer, ui
     if (false_count > REFSIGNAL_DL_MAX_FAULT_CHECK) {
       false_alarm = true;
     }
+
+    // Keep the stage 2 and 3 figures for the caller, found or not
+    q->sf_measured          = sf_count;
+    q->rsrp_spread_dB       = rsrp_dB_max - rsrp_dB_min;
+    q->cfo_spread_Hz        = cfo_max - cfo_min;
+    q->cfo_est_Hz           = cfo_acc;
+    q->rsrp_false_margin_dB = rsrp_dB - rsrp_false_dB;
+    q->sss_ratio            = (sss_strength_false_avg > 0.0f) ? sss_strength_avg / sss_strength_false_avg : NAN;
+    q->false_count          = false_count;
+    q->false_alarm          = false_alarm;
 
     INFO("-- pci=%03d; rsrp_dB=(%+.1f|%+.1f|%+.1f); rsrp_max-min=%.1f; rsrp_false_ratio=%.1f; "
          "cfo=(%.1f|%.1f|%.1f); cfo_max-min=%.1f; sss_ratio=%f; false_count=%d;",
