@@ -6990,9 +6990,13 @@ SRSASN_CODE sib_type5_s::pack(bit_ref& bref) const
     group_flags.pack(bref);
 
     if (group_flags[0]) {
+      // lateNonCriticalExtension is an extension addition on its own, not an
+      // extension addition group: the open type holds the OCTET STRING itself
+      // (X.691 18.9), and its presence is the group flag above. There is no
+      // presence bit inside.
       varlength_field_pack_guard varlen_scope(bref, false);
 
-      HANDLE_CODE(bref.pack(late_non_crit_ext_present, 1));
+      HANDLE_CODE(late_non_crit_ext.pack(bref));
     }
     if (group_flags[1]) {
       varlength_field_pack_guard varlen_scope(bref, false);
@@ -7083,9 +7087,13 @@ SRSASN_CODE sib_type5_s::unpack(cbit_ref& bref)
     group_flags.unpack(bref);
 
     if (group_flags[0]) {
+      // See pack: the open type is the OCTET STRING, with no presence bit
+      // before it. Reading one here took the first bit of the string's
+      // length for the flag and never unpacked the string.
       varlength_field_unpack_guard varlen_scope(bref, false);
 
-      HANDLE_CODE(bref.unpack(late_non_crit_ext_present, 1));
+      late_non_crit_ext_present = true;
+      HANDLE_CODE(late_non_crit_ext.unpack(bref));
     }
     if (group_flags[1]) {
       varlength_field_unpack_guard varlen_scope(bref, false);
