@@ -71,6 +71,9 @@ if(RF_FOUND)
     list(APPEND SOURCES_RF rf_zmq_imp.c rf_zmq_imp_tx.c rf_zmq_imp_rx.c)
   endif (ZEROMQ_FOUND)
 
+  # The file device needs no library: a record read as a radio (patch 024).
+  list(APPEND SOURCES_RF rf_file_imp.c rf_file_imp_tx.c rf_file_imp_rx.c)
+
   add_library(srsran_rf SHARED ${SOURCES_RF})
   target_link_libraries(srsran_rf srsran_rf_utils srsran_phy)
   set_target_properties(srsran_rf PROPERTIES VERSION ${SRSRAN_VERSION_STRING} SOVERSION ${SRSRAN_SOVERSION})
@@ -97,6 +100,10 @@ if(RF_FOUND)
     target_link_libraries(rf_zmq_test srsran_rf)
     #add_test(rf_zmq_test rf_zmq_test)
   endif (ZEROMQ_FOUND)
+
+  add_executable(rf_file_test rf_file_test.c)
+  target_link_libraries(rf_file_test srsran_rf)
+  add_test(rf_file_test rf_file_test)
 
   INSTALL(TARGETS srsran_rf DESTINATION ${LIBRARY_DIR})
 endif(RF_FOUND)
