@@ -190,8 +190,13 @@ static uint32_t dci_format1A_sizeof(const srsran_cell_t* cell, srsran_dl_sf_cfg_
   /* Downlink Assignment Index – 2 bits (TDD) */
   n += (IS_TDD ? 2 : 0);
 
-  /* SRS request – 0 or 1 bit */
-  n += (cfg->srs_request_enabled ? 1 : 0);
+  /* SRS request – 0 or 1 bit. Only in the UE specific search space, as for
+     format 0 (TS 36.212 5.3.3.1.3): in the common search space format 1A has
+     no SRS request field, and without this guard a UE configured with the
+     SRS request read the common search space 1A (system information, paging,
+     random access response) one bit too long and never decoded it. Lab
+     patch 025, 23 Oct 2026. */
+  n += (cfg->srs_request_enabled && !cfg->is_not_ue_ss) ? 1 : 0;
 
   while (n < dci_format0_sizeof_(cell, sf, cfg)) {
     n++;
